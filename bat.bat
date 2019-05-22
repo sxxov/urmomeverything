@@ -10,6 +10,8 @@ if %cmdrunning% gtr 20 (
 	pause
 	exit /b
 )
+cd %~dp0
+if not "%~d0" equ "%CD:~0,2%" (%~d0)
 set :=call :anchor 
 set !=^&^&goto :error 
 setlocal EnableDelayedExpansion
@@ -45,7 +47,7 @@ echo timer: restarting in 10 seconds with new instance...
 timeout /t 10 /nobreak >nul
 start %~nx0
 if "%payloadran%" equ "true" (
-	echo timer: debug: pause (payloadran equ true)
+	echo timer: debug: pause ^(payloadran equ true^)
 	pause >nul
 )
 exit /b 1
