@@ -1,5 +1,6 @@
 @echo off
-title initializing...
+set n=ur mom bot
+title %n%: init
 cls
 for /f "tokens=1 delims=" %%a in ('tasklist^|find /i /c "cmd.exe"') do (
 	set cmdrunning=%%a
@@ -9,32 +10,36 @@ if %cmdrunning% gtr 20 (
 	pause
 	exit /b
 )
-title ur mom bot
 set :=call :anchor 
 set !=^&^&goto :error 
 setlocal EnableDelayedExpansion
 set /a rnd="(!random! * 600 / 32767)" || %:%__xfdi%!%
 for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) || %:%__ulnu%!%
-if "%1" equ "-f" (goto run) || %:%__enht%!%
+if "%1" equ "-f" (goto run ) || %:%__enht%!%
 call :parselastrun
 if %min% lss 10 if not "!lastrun!" equ "!hr!" (goto run) || %:%__hpsr%!%
 :loop
+title %n%: loop
 for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) || %:%__rydm%!%
 call :timer !hr! !min! !sec!
 echo timeout: zzz !tHr!:!tMin:~-2!:!tSecs:~-2! !tAmpm!  || %:%__vbln%!%
+title %n%: zzz
 timeout /t !rSecs! /nobreak >nul || %:%__sdbl%!%
-if "!lastrun!" equ "!hr!" (echo timer: already run this hour...  && goto loop) || %:%__uxvc%!%
+if "!lastrun!" equ "!hr!" (echo timer: already run this hour... && echo. && goto loop) || %:%__uxvc%!%
 :run
+title %n%: ding, time to run
 node js.js
 set payloadran=true
 for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) || %:%__vxcv%!%
 set hr=%hr: =%
+title %n%: write .lastrun
 echo !hr!>.lastrun || %:%__zxet%!%
 echo.
 goto loop
 %:%__rgbf%!%
 
 :error
+title (!) %n%: oof (line: !line!, anchor: !anchor!)
 echo timer: batch error detected (line: !line!, anchor: !anchor!)
 echo timer: restarting in 10 seconds with new instance...
 timeout /t 10 /nobreak >nul
@@ -50,13 +55,13 @@ setlocal
 for /F " usebackq tokens=1 delims=:" %%L IN (`findstr /N "%~1" "%~f0"`) DO set /a lineNr=%%L
 ( 
 	endlocal
-	set "lastline=%line%" 2>nul
 	set "line=%LineNr%"
 	set "anchor=%~1"
 	exit /b
 )
 
 :timer <hr> <min> <sec>
+title %n%: cranking timer
 setlocal EnableDelayedExpansion
 set tHr=%~1
 set /a rnd="(!random! * 600 / 32767)"
@@ -95,6 +100,7 @@ endlocal
 exit /b
 
 :parselastrun
+title %n%: parse .lastrun
 if exist .lastrun (
 	set /p lastrun=<.lastrun || %:%__wegb%!%
 	exit /b
