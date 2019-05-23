@@ -2,7 +2,7 @@ node_modules/*
 old/*
 oof.jpg
 credentials.json
-words.txt_
 cookies.json
 .index
 .lastrun
+.log
