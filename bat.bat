@@ -52,16 +52,32 @@ echo timeout: zzz !tHr!:!tMin:~-2!:!tSec:~-2! !tAmpm!
 echo timeout: zzz !tHr!:!tMin:~-2!:!tSec:~-2! !tAmpm! %e%
 title %n%: zzz
 timeout /t !rSec! /nobreak %e2% >nul || %:%__sdbl%!%
-if "!lastrun!" equ "!hr!" (echo timer: already run this hour... && echo. && goto loop) %e% || %:%__uxvc%!%
+if "!lastrun!" equ "!hr!" (
+echo timer: already run this hour... 
+echo timer: already run this hour... %e%
+echo. 
+goto loop
+) || %:%__uxvc%!%
 :run
 title %n%: ding, time to run
 echo %n%: ding, time to run %e1%
-node js.js
+node js.js 
+if not errorlevel 1 (
+	if exist .nodelog (
+		type .nodelog>>.log
+		del /f /q .nodelog
+	)
+	goto :nodeerror
+)
+if exist .nodelog (
+	type .nodelog>>.log
+	del /f /q .nodelog
+)
 for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) %e% || %:%__vxcv%!%
 set hr=%hr: =%
-title %n%: write .lastrun
-echo !hr!>.lastrun %e% || %:%__zxet%!%
+echo !hr!>.lastrun || %:%__zxet%!%
 echo.
+echo. %e1%
 goto loop
 %:%__rgbf%!%
 
@@ -73,6 +89,14 @@ echo timer: restarting in 10 seconds with new instance...
 timeout /t 10 /nobreak >nul
 start %~nx0
 exit 1
+
+:nodeerror
+title (!) %n%: oof (node)
+echo timer: node error detected (%nodeerrorcount%)
+echo timer: %date% %time%: node error detected (%nodeerrorcount%) %e1%
+echo timer: retrying in 10 seconds...
+timeout /t 10 /nobreak >nul
+goto run
 
 :anchor <ID>
 setlocal
