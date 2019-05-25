@@ -9,7 +9,8 @@ const XMLHttpRequest = require('xhr2'),
 	  { registerFont, createCanvas } = require('canvas'),
 	  opentype = require('opentype.js'),
 	  Dictionary = require("oxford-dictionary-api"),
-	  credentials = JSON.parse(fs.readFileSync(`${__dirname}\\credentials.json`)),
+	  util = require('util'),
+	  credentials = JSON.parse(fs.readFileSync(`${__dirname}/credentials.json`)),
 	  dictID = credentials.dictID,
 	  dictAPI = credentials.dictAPI,
 	  username = credentials.username,
@@ -26,20 +27,42 @@ var canvas,
 	currentHour,
 	working;
 	
+console.log = (d) => { 
+	process.stdout.write(util.format(d) + "\n");
+	fs.appendFileSync(`${__dirname}/.nodelog`, util.format(d) + "\n");
+};
+
 await init();
-process.exit();
+process.exit(1);
 	
 async function init() {
 	return new Promise(async (resolve) => {
 	    console.log(`init: working for: ${words[i]}`);
 		registerFont(`${__dirname}/fonts/Montserrat-Regular.ttf`, { family: 'Montserrat-Regular' });
 		registerFont(`${__dirname}/fonts/Montserrat-Bold.ttf`, { family: 'Montserrat-Bold' });
-		let black  = (((i % 3) == 0 && (i % 2) == 0) || (((i + 1) % 3) == 0 && ((i + 1) % 2) == 0) || (((i + 2) % 3) == 0 && ((i + 2) % 2) == 0)) ? true : false;
+		let black = (((i % 3) == 0 && (i % 2) == 0) || (((i + 1) % 3) == 0 && ((i + 1) % 2) == 0) || (((i + 2) % 3) == 0 && ((i + 2) % 2) == 0)) ? true : false;
+		await testInternet();
 		await createIMG(words[i], "oof.jpg", black);	
 		await loginIG();
 		await doesImageExistIG(await uploadIG("oof.jpg"));
-		await incrementIndex();
+		await incrementIndex(); 
 		resolve();
+	});
+}
+
+async function testInternet() {
+	return new Promise((resolve) => {
+		let xhttp = new XMLHttpRequest();
+		xhttp.open('GET', "http://instagram.com", true);
+		xhttp.onload = () => {
+				if (xhttp.status == 200) {
+					resolve();
+				} else {
+					console.log("testInternet: unable to connect to instagram");
+					process.exit();
+				}
+			};
+		xhttp.send(null);
 	});
 }
 	
@@ -112,7 +135,8 @@ async function doesImageExistIG(photo) {
 ${photo}`);
 					resolve();
 				} else {
-					throw "something went wrong: image doesn't exist";
+					console.log("doesImageExistIG: something went wrong, image doesn't exist");
+					process.exit();
 				}
 			};
 		xhttp.send(null);
