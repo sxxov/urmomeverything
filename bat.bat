@@ -54,7 +54,7 @@ if "%1" equ "-f" (
 	goto :run
 )
 call :parselastrun
-if %min% lss 10 if not "!lastrun!" equ "!hr!" (goto run) %e% || %:%__hpsr%!%
+if %min% lss 10 if not "%lastrun%" equ "%hr:~0,2%" (goto run) %e% || %:%__hpsr%!%
 :loop
 rem , the part that loops the timer and :run
 rem , sets: ()
@@ -81,6 +81,7 @@ rem , sets: ()
 title %n%: ding, time to run
 echo timer: ding, time to run %e1%
 del /f /q .nodelog
+copy /y nul .nodelog >nul
 node js.js 
 if not errorlevel 1 (
 	if exist .nodelog (
@@ -182,6 +183,7 @@ rem , parses the value in .lastrun
 rem , returns null if incorrect value is detected
 rem , sets: (lastrun, lastruncheck)
 echo timer: parsing .lastrun %e1%
+setlocal EnableDelayedExpansion
 if not exist .lastrun (
 	set lastrun=
 	exit /b
@@ -191,10 +193,11 @@ set /a lastrun=10000%lastrun% %% 10000
 if not %lastrun% equ 0 set /a lastruncheck=lastrun + 1
 if errorlevel 1 %:%__vdvb%!%
 if not %lastrun% equ 0 if "%lastruncheck%" leq "1" set lastrun=
+set lastrun=0!lastrun!
 if not "%lastrun%" equ "" (
-	echo timer: .lastrun: %lastrun% %e%
-	set lastrun=0%lastrun%
+	endlocal
 	set lastrun=%lastrun:~-2%
+	echo timer: .lastrun: %lastrun% %e%
 )
 exit /b
 
