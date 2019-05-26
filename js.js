@@ -29,7 +29,9 @@ var canvas,
 	
 console.log = (d) => { 
 	process.stdout.write(util.format(d) + "\n");
-	fs.appendFileSync(`${__dirname}/.nodelog`, util.format(d) + "\n");
+	try {
+		fs.appendFileSync(`${__dirname}/.nodelog`, util.format(d) + "\n");
+	} catch (err) {}
 };
 
 await init();

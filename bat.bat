@@ -14,11 +14,22 @@ cd %~dp0
 if not "%~d0" equ "%CD:~0,2%" (%~d0)
 set :=call :anchor 
 set !=^&^&goto :error 
+if "%1" equ "-debug" (
+	goto :debug
+) else if "%2" equ "-debug" (
+	goto :debug
+) else if "%3" equ "-debug" (
+	goto :debug
+)
 if "%1" equ "-nolog" (
 	set e=^>nul 2^>^&1
 	set e1=^>nul
 	set e2=2^>nul
 ) else if "%2" equ "-nolog" (
+	set e=^>nul 2^>^&1
+	set e1=^>nul
+	set e2=2^>nul
+) else if "%3" equ "-nolog" (
 	set e=^>nul 2^>^&1
 	set e1=^>nul
 	set e2=2^>nul
@@ -35,32 +46,41 @@ echo. %e1% || (
 echo -------------------- %date% %time% -------------------- %e1%
 setlocal EnableDelayedExpansion
 set /a rnd="(!random! * 600 / 32767)" %e% || %:%__xfdi%!%
-for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) %e% || %:%__ulnu%!%
+call :settime 
 call :timeerrorparse %hr% %min% %sec%
 if "%1" equ "-f" (
-	goto run 
+	goto :run 
 ) else if "%2" equ "-f" (
-	goto run
-) %e% || %:%__enht%!%
+	goto :run
+)
 call :parselastrun
 if %min% lss 10 if not "!lastrun!" equ "!hr!" (goto run) %e% || %:%__hpsr%!%
 :loop
+rem , the part that loops the timer and :run
+rem , sets: ()
 title %n%: loop
-for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) %e% || %:%__rydm%!%
+call :settime
 call :timer !hr! !min! !sec!
-echo timeout: zzz !tHr!:!tMin:~-2!:!tSec:~-2! !tAmpm!
-echo timeout: zzz !tHr!:!tMin:~-2!:!tSec:~-2! !tAmpm! %e%
+echo timeout: zzz !nexthr!:!nextmin!:!nextsec! !ampm!
+echo timeout: zzz !nexthr!:!nextmin!:!nextsec! !ampm! %e%
 title %n%: zzz
-timeout /t !rSec! /nobreak %e2% >nul || %:%__sdbl%!%
+timeout /t !remainingsec! /nobreak %e2% >nul || %:%__sdbl%!%
+call :parselastrun
 if "!lastrun!" equ "!hr!" (
-echo timer: already run this hour... 
-echo timer: already run this hour... %e%
-echo. 
-goto loop
+	echo timer: already run this hour... 
+	echo timer: already run this hour... %e1%
+	echo. 
+	echo. %e1%
+	goto loop
 ) || %:%__uxvc%!%
 :run
+rem , the part that runs js.js
+rem , merges .nodelog into .log when finished running
+rem , checks for error code (see more at :nodelog about this)
+rem , sets: ()
 title %n%: ding, time to run
-echo %n%: ding, time to run %e1%
+echo timer: ding, time to run %e1%
+del /f /q .nodelog
 node js.js 
 if not errorlevel 1 (
 	if exist .nodelog (
@@ -73,25 +93,35 @@ if exist .nodelog (
 	type .nodelog>>.log
 	del /f /q .nodelog
 )
-for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) %e% || %:%__vxcv%!%
+call :settime
 set hr=%hr: =%
 echo !hr!>.lastrun || %:%__zxet%!%
+echo !hr! ^> .lastrun %e1%
 echo.
 echo. %e1%
 goto loop
 %:%__rgbf%!%
 
 :error
-title (!) %n%: oof (line: !line!, anchor: !anchor!)
-echo timer: batch error detected (line: !line!, anchor: !anchor!)
-echo timer: %date% %time%: batch error detected (line: !line!, anchor: !anchor!) %e1%
+rem , called when bat.bat encounters a (monitored) error
+rem , restarts bat.bat
+title ^(^^^!^) %n%: oof (line: !line!, anchor: !anchor!, lineval: !lineval!)
+echo timer: batch error detected (line: !line!, anchor: !anchor!, lineval: !lineval!)
+echo timer: %date% %time%: batch error detected (line: !line!, anchor: !anchor!, lineval: !lineval!) %e1%
 echo timer: restarting in 10 seconds with new instance...
 timeout /t 10 /nobreak >nul
 start %~nx0
 exit 1
 
 :nodeerror
-title (!) %n%: oof (node)
+rem , called when js.js encounters an error
+rem , reruns :run after a timeout of 10 secs
+rem , error codes are inverted (0 means error, 1 means done)
+rem , this is as a workaround to unhandled promises returning error 0
+rem , (deprecation) the inversion will be deprecated once that changes
+rem , sets: (nodeerrorcount)
+set /a nodeerrorcount+=1
+title ^(^^^!^) %n%: oof (node) (%nodeerrorcount%)
 echo timer: node error detected (%nodeerrorcount%)
 echo timer: %date% %time%: node error detected (%nodeerrorcount%) %e1%
 echo timer: retrying in 10 seconds...
@@ -99,62 +129,79 @@ timeout /t 10 /nobreak >nul
 goto run
 
 :anchor <ID>
+rem , used as an anchor for error checking
+rem , finds the unique anchor in this file and returns the line value & number
+rem , sets: (line, anchor)
 setlocal
-for /F " usebackq tokens=1 delims=:" %%L IN (`findstr /N "%~1" "%~f0"`) DO set /a lineNr=%%L
+for /f " usebackq tokens=1* delims=/:" %%a in (`findstr /N "%~1" "%~f0"`) do (set linen=%%a && set linev=%%b)
 ( 
 	endlocal
-	set "line=%LineNr%"
+	set "line=%linen%"
 	set "anchor=%~1"
+	set lineval="%linev%"
 	exit /b
 )
 
 :timer <hr> <min> <sec>
+rem , takes current time, +1 hr, +0<rnd<10 mins
+rem , implements am/pm transforming as well
+rem , sets: (currenthr, currentmin, currentsec, rnd, secremaining, nexthr, nextmin, nextsec, ampm)
 title %n%: cranking timer
 setlocal EnableDelayedExpansion
-set tHr=%~1
-set /a rnd="(!random! * 600 / 32767)"
-set /a rSec="((60 - %~2) * 60 ) - !%~3:~0,2!" %e% || %:%__erhn%!%
-set /a rSec+=rnd
-set /a tMin="rSec / 60"
-set /a tSec="rSec - tMin * 60"
-set /a tMin+=%~2 %e% || %:%__vxcb%!%
-set /a tSec+=!%~3:~0,2! %e% || %:%__xcub%!%
-if !tSec! geq 60 (
-set /a tSec-=60
-set /a tMin+=1
-)
-if !tMin! geq 60 (
-	set /a tMin-=60
-	set /a tHr+=1
-)
-if !tHr! gtr 12 (
-	set tHr=%tHr: =%
-	set /a tHr-=12
+set currenthr=%~1
+set currentmin=%~2
+set currentsec=%~3
+set /a rnd=(!random! * 600 / 32767)
+set /a remainingsec=3600 - ((currentmin * 60) + currentsec) || %:%__bxtj%!%
+set /a remainingsec+=rnd
+set /a nexthr=currenthr + 1
+set /a nextmin=rnd / 60
+set /a nextsec=rnd - (nextmin * 60)
+if !nexthr! gtr 12 (
+	set nexthr=%nexthr: =%
+	set /a nexthr-=12
 	set ampm=pm
 ) else (
 	set ampm=am
 )
-set tMin=0!tMin!
-set tSec=0!tSec!
+set nexthr=0!nexthr!
+set nextmin=0!nextmin!
+set nextsec=0!nextsec!
 (
 	endlocal
-	set rSec=%rSec%
-	set tHr=%tHr%
-	set tMin=%tMin%
-	set tSec=%tSec%
-	set tAmpm=%ampm%
+	set nexthr=%nexthr:~-2%
+	set nextmin=%nextmin:~-2%
+	set nextsec=%nextsec:~-2%
+	set remainingsec=%remainingsec%
+	set ampm=%ampm%
 )
-endlocal
 exit /b
 
 :parselastrun
-title %n%: parse .lastrun
-if exist .lastrun (
-	set /p lastrun=<.lastrun %e% || %:%__wegb%!%
+rem , parses the value in .lastrun
+rem , returns null if incorrect value is detected
+rem , sets: (lastrun, lastruncheck)
+echo timer: parsing .lastrun %e1%
+if not exist .lastrun (
+	set lastrun=
 	exit /b
-) else exit /b 1
+)
+set /p lastrun=<.lastrun %e% || %:%__wegb%!%
+set /a lastrun=10000%lastrun% %% 10000
+if not %lastrun% equ 0 set /a lastruncheck=lastrun + 1
+if errorlevel 1 %:%__vdvb%!%
+if not %lastrun% equ 0 if "%lastruncheck%" leq "1" set lastrun=
+if not "%lastrun%" equ "" (
+	echo timer: .lastrun: %lastrun% %e%
+	set lastrun=0%lastrun%
+	set lastrun=%lastrun:~-2%
+)
+exit /b
 
 :timeerrorparse <hr> <min> <sec>
+rem , double checks if the time is set correctly
+rem , checks hr <= 24, min <= 60, sec <= 60
+rem , sets: (eHr, eMin, eSec, rVal)
 setlocal EnableDelayedExpansion
 set eHr=%~1
 set eMin=%~2
@@ -170,10 +217,50 @@ if %eHr% gtr 24 %:%__ijhp%!%
 if %eMin% gtr 60 %:%__ovbi%!%
 if %eSec% gtr 60 %:%__bvjp%!%
 if not %eHr% equ 0 (set /a rVal=eHr+1)
-if %rVal% equ 1 %:%__xcnr%!%
+if "%rVal%" equ "1" %:%__xcnr%!%
 if not %eMin% equ 0 (set /a rVal=eMin+1)
-if %rVal% equ 1 %:%__zsbo%!%
+if "%rVal%" equ "1" %:%__zsbo%!%
 if not %eSec% equ 0 (set /a rVal=eSec+1)
-if %rVal% equ 1 %:%__xohc%!%
+if "%rVal%" equ "1" %:%__xohc%!%
 endlocal
 exit /b
+
+:settime
+rem , sets the time
+rem , v1.1: powershell is more reliable but slower
+rem , sets: (hr, min, sec)
+for /f %%a in ('powershell -command "get-date -format HH"') do set hr=%%a %e% || %:%__ulnu%!%
+for /f %%a in ('powershell -command "get-date -format mm"') do set min=%%a %e% || %:%__vxcv%!%
+for /f %%a in ('powershell -command "get-date -format ss"') do set sec=%%a %e% || %:%__sbuj%!%
+rem (deprecated) for /f "tokens=1-3 delims=/:" %%a in ('echo %time%') do (set hr=%%a &&set min=%%b &&set sec=%%c) %e% || %:%__rydm%!%
+exit /b
+
+:debug
+rem , debug mode
+rem , sets: (cmd, callmode)
+title %n%: debug
+setlocal EnableDelayedExpansion
+set /p cmd=^$ 
+if "%cmd%" equ "c" (
+	set callmode=true
+	echo call mode enabled
+	echo.
+	:callmode
+	set /p cmd=^$ call 
+)
+if "%callmode%" equ "true" if "%cmd%" equ "c" (
+	set callmode=false
+	echo call mode disabled
+	echo.
+	goto :debug
+)
+if "%callmode%" equ "true" (
+	call %cmd%
+	echo.
+	title %n%: debug
+	goto :callmode
+)
+%cmd%
+echo.
+title %n%: debug
+goto debug
