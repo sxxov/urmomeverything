@@ -944,9 +944,9 @@ bi
 bias
 bible
 biblical
+bicycle
 bibliographic
 bibliography
-bicycle
 bid
 bidder
 bidding
@@ -8744,7 +8744,6 @@ sustainability
 sustainable
 sustained
 suzuki
-sv
 sw
 swap
 sweden
@@ -8785,7 +8784,6 @@ system
 systematic
 systems
 t
-ta
 tab
 table
 tables
@@ -8837,9 +8835,7 @@ taxation
 taxes
 taxi
 taylor
-tb
 tba
-tc
 tcp
 td
 te
@@ -9240,7 +9236,6 @@ trends
 treo
 tri
 trial
-trials
 triangle
 tribal
 tribe
@@ -9543,7 +9538,6 @@ vertical
 very
 verzeichnis
 vessel
-vessels
 veteran
 veterans
 veterinary
@@ -9581,7 +9575,6 @@ viii
 viking
 villa
 village
-villages
 villas
 vincent
 vintage
@@ -9614,7 +9607,6 @@ vista
 visual
 vital
 vitamin
-vitamins
 vocabulary
 vocal
 vocals
@@ -9671,7 +9663,6 @@ wall
 wallace
 wallet
 wallpaper
-wallpapers
 walls
 walnut
 walt
@@ -9695,7 +9686,6 @@ warner
 warning
 warnings
 warrant
-warranties
 warranty
 warren
 warrior
@@ -9742,7 +9732,6 @@ webcast
 weblog
 weblogs
 webmaster
-webmasters
 webpage
 webshots
 website
@@ -9755,7 +9744,6 @@ wednesday
 weed
 week
 weekend
-weekends
 weekly
 weeks
 weight
@@ -9836,7 +9824,6 @@ wines
 wing
 wings
 winner
-winners
 winning
 wins
 winston
@@ -9859,7 +9846,6 @@ withdrawal
 within
 without
 witness
-witnesses
 wives
 wizard
 wm
@@ -9892,7 +9878,6 @@ workout
 workplace
 works
 workshop
-workshops
 workstation
 world
 worldcat
@@ -9924,7 +9909,6 @@ writer
 writers
 writes
 writing
-writings
 written
 wrong
 wrote

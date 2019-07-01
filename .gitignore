@@ -1,9 +1,2 @@
 node_modules/*
-old/*
-oof.jpg
-credentials.json
-cookies.json
-.index
-.lastrun
-.log
-.nodelog
+v8.txt

@@ -34,10 +34,12 @@ if "%1" equ "-nolog" (
 	set e1=^>nul
 	set e2=2^>nul
 ) else (
-	set e=^>^>.log 2^>^&1
-	set e1=^>^>.log
-	set e2=2^>^>.log
+	set e=^>^>"%~dp0stuff/.batchlog" 2^>^&1
+	set e1=^>^>"%~dp0stuff/.batchlog"
+	set e2=2^>^>"%~dp0stuff/.batchlog"
 )
+copy /y nul %~dp0stuff/.batchlog >nul
+attrib %~dp0stuff/.batchlog +h
 echo. %e1% || (
 	echo timer: another instance of %n% is open, please close that or disable logging with -nolog
 	pause
@@ -80,24 +82,22 @@ rem , checks for error code (see more at :nodelog about this)
 rem , sets: ()
 title %n%: ding, time to run
 echo timer: ding, time to run %e1%
-del /f /q .nodelog
-copy /y nul .nodelog >nul
-node js.js 
+copy /y nul %~dp0stuff/.nodelog >nul
+attrib .nodelog +h
+node main.js -f
 if not errorlevel 1 (
-	if exist .nodelog (
-		type .nodelog>>.log
-		del /f /q .nodelog
-	)
+	if exist %~dp0stuff/.batchlog type %~dp0stuff/.batchlog>>%~dp0stuff/.log
+	if exist %~dp0stuff/.nodelog type %~dp0stuff/.nodelog>>.log
+	copy /y nul %~dp0stuff/.batchlog >nul
 	goto :nodeerror
 )
-if exist .nodelog (
-	type .nodelog>>.log
-	del /f /q .nodelog
-)
+if exist %~dp0stuff/.batchlog type %~dp0stuff/.batchlog>>%~dp0stuff/.log
+if exist %~dp0stuff/.nodelog type %~dp0stuff/.nodelog>>%~dp0stuff/.log
+copy /y nul %~dp0stuff/.batchlog >nul
 call :settime
 set hr=%hr: =%
-echo !hr!>.lastrun || %:%__zxet%!%
-echo !hr! ^> .lastrun %e1%
+echo !hr!>%~dp0stuff/.lastrun || %:%__zxet%!%
+echo !hr! ^> %~dp0stuff/.lastrun %e1%
 echo.
 echo. %e1%
 goto loop
@@ -124,6 +124,11 @@ rem , sets: (nodeerrorcount)
 set /a nodeerrorcount+=1
 title ^(^^^!^) %n%: oof (node) (%nodeerrorcount%)
 echo timer: node error detected (%nodeerrorcount%)
+if %nodeerrorcount% gtr 10 (
+	echo timer: too many node errors, pausing
+	pause >nul
+	goto run
+)
 echo timer: %date% %time%: node error detected (%nodeerrorcount%) %e1%
 echo timer: retrying in 10 seconds...
 timeout /t 10 /nobreak >nul
@@ -152,7 +157,7 @@ setlocal EnableDelayedExpansion
 set currenthr=%~1
 set currentmin=%~2
 set currentsec=%~3
-set /a rnd=(!random! * 600 / 32767)
+set /a rnd=(%random% * 600 / 32767)
 set /a remainingsec=3600 - ((currentmin * 60) + currentsec) || %:%__bxtj%!%
 set /a remainingsec+=rnd
 set /a nexthr=currenthr + 1
@@ -188,7 +193,7 @@ if not exist .lastrun (
 	set lastrun=
 	exit /b
 )
-set /p lastrun=<.lastrun %e% || %:%__wegb%!%
+set /p lastrun=<%~dp0stuff/.lastrun %e% || %:%__wegb%!%
 set /a lastrun=10000%lastrun% %% 10000
 if not %lastrun% equ 0 set /a lastruncheck=lastrun + 1
 if errorlevel 1 %:%__vdvb%!%
