@@ -1,46 +1,77 @@
 (async () => {
+    
+function initLog(currentTask) {
+    console.clear();
+    console.log(`initializing: ${currentTask}`);
+}
 
-const XMLHttpRequest = require('xhr2'),
-	  igAPI = require('instagram-web-api'),
-	  request = require('request'),
-	  fs = require('fs'),
-	  jimp = require('jimp'),
-	  FileCookieStore = require('tough-cookie-filestore2'),
-	  { registerFont, createCanvas } = require('canvas'),
-	  opentype = require('opentype.js'),
-	  Dictionary = require('oxford-dictionary-api'),
-	  util = require('util'),
-      inquirer = require('inquirer'),
-      schedule = require('node-schedule'),
-      isOnline = require('is-online'),
-	  credentials = JSON.parse(fs.readFileSync(`${__dirname}//stuff//credentials.json`)),
-	  dictID = credentials.dictID,
-	  dictAPI = credentials.dictAPI,
-	  username = credentials.username,
-	  password = credentials.password,
-	  dict = new Dictionary(dictID, dictAPI),
-	  cookieStore = new FileCookieStore(`${__dirname}//stuff//cookies.json`),
-	  ig = new igAPI({ username, password, cookieStore }),
-      words = await getWords().then((result) => result),
-	  hashtags = await getHashtags().then((result) => result);
-var canvas,
-	data,
-	buffer,
-	i,
-    args = process.argv.slice(2),
-	currentHour,
-	working,
-	challenge = {},
-	error;
-	
+initLog('xh2');
+const XMLHttpRequest = require('xhr2');
+initLog('instagram-web-api');
+const igAPI = require('instagram-web-api');
+initLog('request');
+const request = require('request');
+initLog('fs');
+const fs = require('fs');
+initLog('jimp');
+const jimp = require('jimp');
+initLog('tough-cookie-filestore2');
+const FileCookieStore = require('tough-cookie-filestore2');
+initLog('canvas');
+const { registerFont, createCanvas } = require('canvas');
+initLog('opentype.js');
+const opentype = require('opentype.js');
+initLog('oxford-dictionary-api');
+const Dictionary = require('oxford-dictionary-api');
+initLog('util');
+const util = require('util');
+initLog('inquirer');
+const inquirer = require('inquirer');
+initLog('node-schedule');
+const schedule = require('node-schedule');
+initLog('is-online');
+const isOnline = require('is-online');
+
+initLog('sorting out credentials');
+const credentials = JSON.parse(fs.readFileSync(`${__dirname}\\stuff\\credentials.json`));
+const dictID = credentials.dictID;
+const dictAPI = credentials.dictAPI;
+const username = credentials.username;
+const password = credentials.password;
+const dict = new Dictionary(dictID, dictAPI);
+
+initLog('cookies!!1!');
+const cookieStore = new FileCookieStore(`${__dirname}\\stuff\\cookies.json`);
+    
+initLog('igAPI');
+const ig = new igAPI({ username, password, cookieStore });
+
+initLog('getting words');
+const words = await getWords().then((result) => result);
+
+initLog('getting hashtags');
+const hashtags = await getHashtags().then((result) => result);
+    
+initLog('miscellanious things');
+var canvas;
+var data;
+var buffer;
+var i;
+var args = process.argv.slice(2);
+var currentHour;
+var working;
+var challenge = {};
+var error;
+
 console.log = (d) => { 
 	process.stdout.write(util.format(d) + '\n');
 	try {
-		fs.appendFileSync(`${__dirname}//stuff//.nodelog`, util.format(d) + '\n');
+		fs.appendFileSync(`${__dirname}\\stuff\\.nodelog`, util.format(d) + '\n');
 	} catch (err) {}
 };
 
 if (args[0] == '-f') {
+    console.clear();
     await init();
     die(1);
 }
@@ -52,14 +83,14 @@ async function init() {
 	return new Promise(async (resolve) => {
         i = await getIndex();
 	    console.log(`init: working for: ${words[i]}`);
-		registerFont(`${__dirname}//fonts//Montserrat-Regular.ttf`, { family: 'Montserrat-Regular' });
-		registerFont(`${__dirname}//fonts//Montserrat-Bold.ttf`, { family: 'Montserrat-Bold' });
+		registerFont(`${__dirname}\\fonts\\Montserrat-Regular.ttf`, { family: 'Montserrat-Regular' });
+		registerFont(`${__dirname}\\fonts\\Montserrat-Bold.ttf`, { family: 'Montserrat-Bold' });
 		let black = (((i % 3) == 0 && (i % 2) == 0) || (((i + 1) % 3) == 0 && ((i + 1) % 2) == 0) || (((i + 2) % 3) == 0 && ((i + 2) % 2) == 0)) ? true : false;
 		await testInternet();
-		await createIMG(words[i], `${__dirname}//stuff//oof.jpg`, black);	
+		await createIMG(words[i], `${__dirname}\\stuff\\oof.jpg`, black);	
 		await loginIG();
         let imgUrl = 
-            await uploadIG(`${__dirname}//stuff//oof.jpg`);
+            await uploadIG(`${__dirname}\\stuff\\oof.jpg`);
 		await doesImageExistIG(imgUrl)
             .then(async () => {
                 await incrementIndex();
@@ -70,7 +101,7 @@ async function init() {
 		let date = new Date();
         let currentHour = '0' + date.getHours();
             currentHour = currentHour.substring(currentHour.length - 2);
-        await fs.writeFile(`${__dirname}//stuff//.lastrun`, currentHour, (err) => { return err ? console.log(err) : false });
+        await fs.writeFile(`${__dirname}\\stuff\\.lastrun`, currentHour, (err) => { return err ? console.log(err) : false });
         console.log('\n');
 		resolve();
         return;
@@ -78,7 +109,8 @@ async function init() {
 }
     
 async function loop() {
-    let lastrun = fs.readFileSync(`${__dirname}//stuff//.lastrun`);
+    initLog('starting loop');
+    let lastrun = fs.readFileSync(`${__dirname}\\stuff\\.lastrun`);
         lastrun = lastrun.toString();
     let randomMillis = randomInt(0, 600000);
     let date = new Date();
@@ -86,13 +118,17 @@ async function loop() {
         currentHour = currentHour.substring(currentHour.length - 2);
     let hour = '0' + (date.getHours() + 1);
         hour = hour.substring(hour.length - 2);
+    console.clear();
     if (lastrun != currentHour && date.getMinutes() <= 10) {
         await init();
     }
     console.log(`zzz ${to12Hr(hour + ':' + millisToMinsAndSecs(randomMillis))}`);
     var job = await schedule.scheduleJob(`0 0 */1 * * *`, async () => {
                 await sleep(randomMillis);
-                await init();
+                date = new Date();
+                if (date.getHours == hour && date.getMinutes == millisToMins(randomMillis)) {
+                    await init();
+                }
                 date = new Date();
                 randomMillis = randomInt(0, 600000);
                 hour = '0' + (date.getHours() + 1);
@@ -115,6 +151,16 @@ function millisToMinsAndSecs(millis) {
     let seconds = ((millis % 60000) / 1000).toFixed(0);
     return minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
 }
+    
+function millisToMins(millis) {
+    let minutes = '0' + Math.floor(millis / 60000);
+    return minutes.substring(minutes.length - 2);
+}
+
+function millisToSecs(millis) {
+    let seconds = ((millis % 60000) / 1000).toFixed(0);
+    return (seconds < 10 ? '0' : '') + seconds;
+}
 
 async function testInternet() {
 	return new Promise(async (resolve) => {
@@ -133,22 +179,42 @@ async function getDefinition(word) {
 	return new Promise(resolve => {
 		dict.find(word, async (error, data) => {
 			if (error) {
-				data = 'idk'
+                dict.find(word.substring(0, word.length - 1), async (error, data) => {
+                    if (error) { 
+                        dict.find(word.substring(0, word.length - 3), async (error, data) => {
+                            if (error) { 
+                                resolve('idk'); 
+                            } else {
+                                try {
+                                    resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
+                                } catch (e) { 
+                                    resolve('idk');
+                                } 
+                            }
+                        });
+                    } else {
+                        try {
+                            resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
+                        } catch (e) { 
+                            resolve('idk');
+                        } 
+                    }
+                });
 			} else {
 				try {
-					data = data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0];
-				} catch (e) {
-					data = 'idk';
-				}
+					resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
+				} catch (e) { 
+                    resolve('idk');
+                }
 			}
-			resolve(data);
+			
             return;
 		});
 	});
 }
 	
 async function convertToJpgIG(photo) {
-	jimp.read(`${__dirname}//stuff//${photo}`)
+	jimp.read(`${__dirname}\\stuff\\${photo}`)
 		.then(lenna => {
 		console.log(`convertToJpgIG: ${photo} => ${photo.split('.')[0]}.jpg`);
 		return lenna
@@ -174,7 +240,7 @@ what it means: ${definition}
 
 #urmom${words[i]} #urmum${words[i]} ${randomHashtags()}`});
         console.log(`uploadIG: upload function complete`);
-        return `https://www.instagram.com/p/${media.media.code}/`; 
+        return `https:\\www.instagram.com/p/${media.media.code}/`; 
     } catch (e) {
         console.log(`uploadIG: error`);
         console.log(e);
@@ -286,13 +352,13 @@ async function doChallengeIG(checkpoint_url) {
 	
 async function getIndex() {
 	return new Promise(resolve => {
-		fs.readFile(`${__dirname}//stuff//.index`, 'utf8', (err, data) => {
+		fs.readFile(`${__dirname}\\stuff\\.index`, 'utf8', (err, data) => {
 			if (!err) {
 				resolve(parseInt(data));
                 return;
 			} else {
 				data = (i > 0) ? i : 0;
-				fs.writeFile(`${__dirname}//stuff//.index`, data, (err) => {
+				fs.writeFile(`${__dirname}\\stuff\\.index`, data, (err) => {
 					if (err) throw err;
 				});
 				resolve(data);
@@ -304,7 +370,7 @@ async function getIndex() {
 	
 async function incrementIndex() {
 	return new Promise(resolve => {
-		fs.writeFile(`${__dirname}//stuff//.index`, i + 1, (err) => {
+		fs.writeFile(`${__dirname}\\stuff\\.index`, i + 1, (err) => {
 			if (!err) {
 				resolve();
                 return;
@@ -330,7 +396,7 @@ function shuffleArray(array) {
 	
 async function getHashtags() {
 	return new Promise(resolve => {
-		fs.readFile(`${__dirname}//stuff//hashtags.txt`, 'utf8', (err, data) => {
+		fs.readFile(`${__dirname}\\stuff\\hashtags.txt`, 'utf8', (err, data) => {
 			if (!err) {
 				resolve(data.split('\r\n'));
                 return;
@@ -343,7 +409,7 @@ async function getHashtags() {
 	
 function getWords() {
 	return new Promise(resolve => {
-		fs.readFile(`${__dirname}//stuff//words.txt`, 'utf8', (err, data) => {
+		fs.readFile(`${__dirname}\\stuff\\words.txt`, 'utf8', (err, data) => {
 			if (!err) {
 				resolve(data.split('\r\n'));
                 return;
