@@ -98,9 +98,7 @@ async function init() {
             .catch(() => {
                 console.log('incrementIndex: not incrementing index');
         });
-		let date = new Date();
-        let currentHour = '0' + date.getHours();
-            currentHour = currentHour.substring(currentHour.length - 2);
+        let currentHour = getCurrentHour();
         await fs.writeFile(`${__dirname}\\stuff\\.lastrun`, currentHour, (err) => { return err ? console.log(err) : false });
         console.log('\n');
 		resolve();
@@ -113,28 +111,41 @@ async function loop() {
     let lastrun = fs.readFileSync(`${__dirname}\\stuff\\.lastrun`);
         lastrun = lastrun.toString();
     let randomMillis = randomInt(0, 600000);
-    let date = new Date();
-    let currentHour = '0' + date.getHours();
-        currentHour = currentHour.substring(currentHour.length - 2);
-    let hour = '0' + (date.getHours() + 1);
-        hour = hour.substring(hour.length - 2);
+    let currentHour = getCurrentHour();
+    let hour = parseInt(getCurrentHour()) + 1;
     console.clear();
-    if (lastrun != currentHour && date.getMinutes() <= 10) {
+    if (lastrun != currentHour && getCurrentMin() <= 10) {
         await init();
     }
     console.log(`zzz ${to12Hr(hour + ':' + millisToMinsAndSecs(randomMillis))}`);
     var job = await schedule.scheduleJob(`0 0 */1 * * *`, async () => {
                 await sleep(randomMillis);
-                date = new Date();
-                if (date.getHours == hour && date.getMinutes == millisToMins(randomMillis)) {
+                if (getCurrentHour() == hour && getCurrentMin() == millisToMins(randomMillis)) {
                     await init();
+                } else {
+                    console.log('loop: time makes no sense')
+                    console.log(`loop: 
+    hours: ${getCurrentHour()} != ${hour} 
+    && 
+    minutes: ${getCurrentMin()} != ${millisToMins(randomMillis)} \(of ${randomMillis}\)
+`);
                 }
-                date = new Date();
                 randomMillis = randomInt(0, 600000);
-                hour = '0' + (date.getHours() + 1);
-                hour = hour.substring(hour.length - 2);
+                hour = parseInt(getCurrentHour()) + 1;
                 console.log(`zzz ${to12Hr(hour + ':' + millisToMinsAndSecs(randomMillis))}`);
             });
+}
+
+function getCurrentMin() {
+    let date = new Date();
+    let currentMin = '0' + date.getMinutes();
+    return currentMin.substring(currentMin.length - 2);
+}    
+
+function getCurrentHour() {
+    let date = new Date();
+    let currentHour = '0' + date.getHours();
+    return currentHour.substring(currentHour.length - 2);
 }
     
 function to12Hr(time) {
@@ -142,7 +153,7 @@ function to12Hr(time) {
     if (hour > 12) {
         hour = hour - 12;
         return hour + time.substring(2) + ' PM';
-    } else return time + ' AM';
+    } else return ('0' + time).substring(-2) + ' AM';
 }
     
 function millisToMinsAndSecs(millis) {
