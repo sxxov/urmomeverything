@@ -8,7 +8,7 @@ I made this as a fun project to run locally on my computer.
 
 ### main.js:
 	- where the magic happens
-	- BETA: waits every hour + a random value between 0-600 seconds using "node-schedule", replaces bat.bat (https://github.com/node-schedule/node-schedule)
+	- waits every hour + a random value between 0-600 seconds using "node-schedule", replaces bat.bat (https://github.com/node-schedule/node-schedule)
 	- generates an image (oof.jpg) using "node-canvas" (https://github.com/Automattic/node-canvas)
 	- logs in & uploads to Instagram using "instagram-web-api" (https://www.npmjs.com/package/instagram-web-api)
 	- looks up definitions using the Oxford Dictionary API for the captions (https://developer.oxforddictionaries.com)
