@@ -7,22 +7,16 @@ function initLog(currentTask) {
 
 initLog('xh2');
 const XMLHttpRequest = require('xhr2');
-initLog('instagram-web-api');
-const igAPI = require('instagram-web-api');
+initLog('instagram-private-api');
+const { IgApiClient } = require('instagram-private-api');
 initLog('request');
 const request = require('request');
 initLog('fs');
 const fs = require('fs');
-initLog('jimp');
-const jimp = require('jimp');
-initLog('tough-cookie-filestore2');
-const FileCookieStore = require('tough-cookie-filestore2');
 initLog('canvas');
 const { registerFont, createCanvas } = require('canvas');
 initLog('opentype.js');
 const opentype = require('opentype.js');
-initLog('oxford-dictionary-api');
-const Dictionary = require('oxford-dictionary-api');
 initLog('util');
 const util = require('util');
 initLog('inquirer');
@@ -38,13 +32,9 @@ const dictID = credentials.dictID;
 const dictAPI = credentials.dictAPI;
 const username = credentials.username;
 const password = credentials.password;
-const dict = new Dictionary(dictID, dictAPI);
-
-initLog('cookies!!1!');
-const cookieStore = new FileCookieStore(`${__dirname}\\stuff\\cookies.json`);
     
-initLog('igAPI');
-const ig = new igAPI({ username, password, cookieStore });
+initLog('IgApiClient');
+const ig = new IgApiClient();
 
 initLog('getting words');
 const words = await getWords().then((result) => result);
@@ -53,15 +43,8 @@ initLog('getting hashtags');
 const hashtags = await getHashtags().then((result) => result);
     
 initLog('miscellanious things');
-var canvas;
-var data;
-var buffer;
 var i;
 var args = process.argv.slice(2);
-var currentHour;
-var working;
-var challenge = {};
-var error;
 
 console.log = (d) => { 
 	process.stdout.write(util.format(d) + '\n');
@@ -76,26 +59,44 @@ if (args[0] == '-f') {
     die(1);
 }
 
-
 await loop();
 	
 async function init() {
 	return new Promise(async (resolve) => {
         i = await getIndex();
+        
 	    console.log(`init: working for: ${words[i]}`);
+        
 		registerFont(`${__dirname}\\fonts\\Montserrat-Regular.ttf`, { family: 'Montserrat-Regular' });
 		registerFont(`${__dirname}\\fonts\\Montserrat-Bold.ttf`, { family: 'Montserrat-Bold' });
-		let black = (((i % 3) == 0 && (i % 2) == 0) || (((i + 1) % 3) == 0 && ((i + 1) % 2) == 0) || (((i + 2) % 3) == 0 && ((i + 2) % 2) == 0)) ? true : false;
+        
+		let black = // eg, (4 + 2 == 6) % 6 == 0
+            (
+                (
+                    ((i + 0) % 6) == 0 
+                ) 
+            || 
+                (
+                    ((i + 1) % 6) == 0 
+                ) 
+            || 
+                (
+                    ((i + 2) % 6) == 0 
+                )
+            ) ? true : false;
+        
 		await testInternet();
-		await createIMG(words[i], `${__dirname}\\stuff\\oof.jpg`, black);	
-		await loginIG();
+        await loginIG();
+        
         let imgUrl = 
-            await uploadIG(`${__dirname}\\stuff\\oof.jpg`);
+            await uploadIG(await createIMG(words[i], black));
+        
 		await doesImageExistIG(imgUrl)
             .then(async () => {
                 await incrementIndex();
         })
-            .catch(() => {
+            .catch((e) => {
+                console.log(e);
                 console.log('incrementIndex: not incrementing index');
         });
         let currentHour = getCurrentHour();
@@ -186,103 +187,102 @@ async function testInternet() {
 	});
 }
 	
-async function getDefinition(word) {
+async function getDefinition(word, minWordLength) {
+    console.log(`getDefinition: getting definition for: ${word}`);
 	return new Promise(resolve => {
-		dict.find(word, async (error, data) => {
-			if (error) {
-                dict.find(word.substring(0, word.length - 1), async (error, data) => {
-                    if (error) { 
-                        dict.find(word.substring(0, word.length - 3), async (error, data) => {
-                            if (error) { 
-                                resolve('idk'); 
-                            } else {
-                                try {
-                                    resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
-                                } catch (e) { 
-                                    resolve('idk');
-                                } 
-                            }
-                        });
-                    } else {
-                        try {
-                            resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
-                        } catch (e) { 
-                            resolve('idk');
-                        } 
+        let xhttp = new XMLHttpRequest();
+		xhttp.open('GET', `https://od-api.oxforddictionaries.com/api/v2/entries/en-gb/${word}?fields=definitions&strictMatch=false`, true);
+        xhttp.setRequestHeader('Accept', 'application/json');
+        xhttp.setRequestHeader('app_id', '1fc12ae2');
+        xhttp.setRequestHeader('app_key', 'b6052ff26aa20f8b9e6d1a1ff06ebeb7');
+		xhttp.onload = async () => {
+				if (xhttp.status == 200) {
+					let data = JSON.parse(xhttp.response);
+                    try {
+                        resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
+                    } catch (e) {
+                        resolve('idk');
                     }
-                });
-			} else {
-				try {
-					resolve(data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0]);
-				} catch (e) { 
+                    return;
+				} else {
+                    let otherData;
+                    if (minWordLength == undefined || word.length > minWordLength) {
+                        otherData = await getDefinition(word.substring(0, word.length - 1), minWordLength ? minWordLength : word.length - 3).then((result) => result);
+                        if (otherData != 'idk') {
+                            resolve(otherData);
+                        }
+                    } 
                     resolve('idk');
+                    return;
                 }
-			}
-			
-            return;
-		});
+        }
+		xhttp.send(null);
 	});
 }
 	
-async function convertToJpgIG(photo) {
-	jimp.read(`${__dirname}\\stuff\\${photo}`)
-		.then(lenna => {
-		console.log(`convertToJpgIG: ${photo} => ${photo.split('.')[0]}.jpg`);
-		return lenna
-			.write(photo.split('.')[0] + '.jpg');
-		})
-		.catch(err => {
-			console.error(err);
-	});
-}
-	
-async function uploadIG(uri) {
-	console.log(`uploadIG: uploading: ${uri}`);
+async function uploadIG(buffer) {
+	console.log(`uploadIG: uploading`);
 	let definition = await getDefinition(words[i]).then((result) => result);
-    let media;
+    
     try {
-        media = await ig.uploadPhoto({ 
-            photo: uri, 
-            caption: `ur mom ${words[i]}
+        let caption = `ur mom ${words[i]}
 .
 
 what it means: ${definition}
 .
 
-#urmom${words[i]} #urmum${words[i]} ${randomHashtags()}`});
-        console.log(`uploadIG: upload function complete`);
-        return `https:\\www.instagram.com/p/${media.media.code}/`; 
+#urmom${words[i]} #urmum${words[i]} ${randomHashtags()}`;
+        console.log(`uploadIG:
+${caption}`)
+        const result = await ig.publish.photo({
+            file: buffer, 
+            caption: caption
+        });
+        
+        let url = `https://www.instagram.com/p/${result.media.code}/`;
+        console.log(`uploadIG: upload function complete: ${url}`);
+        if (result.status != 'ok') {
+            throw 'uploadIG: upload status != ok'
+        }
+        return url; 
     } catch (e) {
         console.log(`uploadIG: error`);
         console.log(e);
-        //die();
     }
 }
 
 async function loginIG() {
 	console.log('loginIG: logging in');
+    
 	try {
-		let response = await ig.login();
-		if (!response.authenticated) {
-			console.log('loginIG: failed to login');
-			//throw null;
-		}
-		const profile = await ig.getProfile();
+		ig.state.generateDevice(username);
+        await ig.simulate.preLoginFlow();
+        const profile = await ig.account.login(username, password);
+        process.nextTick(async () => await ig.simulate.postLoginFlow());
 
 		console.log(`loginIG: logged in as: ${profile.username}`);
 	} catch (e) {
-		let json = JSON.parse(e.message.substring(6));
-		console.log(json.message);
-		if (json.message == 'checkpoint_required') {
-			await doChallengeIG(json.checkpoint_url);
-		}
-		//die();
+		console.log(ig.state.checkpoint); // Checkpoint info here
+        await ig.challenge.auto(true); // Requesting sms-code or click "It was me" button
+        console.log(ig.state.checkpoint); // Challenge info here
+        const { code } = await inquirer.prompt([
+        {
+            type: 'input',
+            name: 'code',
+            message: 'Enter code',
+        },
+        ]);
+        console.log(await ig.challenge.sendSecurityCode(code));
 	}
 }
 	
 async function doesImageExistIG(url) {
 	return new Promise((resolve, reject) => {
 		console.log('doesImageExistIG: verifying if the image uploaded correctly');
+        if (url == null || url == undefined || url == 'https://www.instagram.com/p//') {
+            reject();
+            throw 'doesImageExistIG: empty url';
+        }
 		let xhttp = new XMLHttpRequest();
 		xhttp.open('GET', url, true);
 		xhttp.onload = () => {
@@ -291,74 +291,13 @@ async function doesImageExistIG(url) {
 					resolve();
                     return;
 				} else {
-					console.log('doesImageExistIG: something went wrong, image doesn\'t exist');
-                    throw false;
+                    reject();
+                    throw 'doesImageExistIG: something went wrong, image doesn\'t exist';
 					//die();
 				}
 			};
 		xhttp.send(null);
 	});
-}
-
-async function doChallengeIG(checkpoint_url) {
-	challenge.url = checkpoint_url;
-    challenge.returnedChallenge = await ig.getChallenge({ challengeUrl: challenge.url });
-    console.log(challenge.returnedChallenge);
-    let choices = {
-            email: [   
-                { 
-                    name: `Phone: ?`,
-                    disabled: `Choice not available`
-                },
-                `Email: ${challenge.returnedChallenge.fields.email}`
-            ], 
-            phone: [
-                `Phone: ${challenge.returnedChallenge.fields.phone}`,
-                { 
-                    name: `Email: ?`,
-                    disabled: `Choice not available`
-                },
-            ],
-            both: [
-                `Phone: ${challenge.returnedChallenge.fields.phone}`,
-                `Email: ${challenge.returnedChallenge.fields.email}`
-            ]
-        
-        };
-    let choicesAvailable = challenge.returnedChallenge.fields.choice;
-    let choice;
-    if (choicesAvailable.includes('1')) { 
-        if (choicesAvailable.includes('0')) { 
-            choice = choices.both;
-        } else {
-            choice = choices.email;
-        }
-    } else {
-        choice = choices.phone;
-    }
-    
-    await inquirer.prompt([
-        {
-            type: 'list',
-            name: 'method',
-            message: 'Method to receive verification code: ',
-            choices: choice
-        },
-        {
-            type: 'number',
-            name: 'securityCode',
-            message: 'Security code: ',
-        }
-    ]).then(async (answers) => {
-        challenge.method = answers.method;
-        challenge.securityCode = answers.securityCode;
-        if (Number.isNaN(challenge.securityCode)) {
-            console.log('Security code is not a number');
-            doChallengeIG(challenge.url);
-        }
-        await ig.updateChallenge({ challengeUrl: challenge.url, choice: challenge.method });
-        await ig.updateChallenge({ challengeUrl: challenge.url, securityCode: challenge.securityCode });
-    });
 }
 	
 async function getIndex() {
@@ -435,7 +374,7 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function createIMG(word, uri, black) {
+async function createIMG(word, black) {
 	console.log('createIMG: creating image');
 	let canvas = createCanvas(1920, 1920),
 		ctx = canvas.getContext('2d'),
@@ -446,110 +385,110 @@ async function createIMG(word, uri, black) {
 			boldFont = fontSize + 'px Montserrat-Bold',
 			regularFont = fontSize + 'px Montserrat-Regular';
 	  	
-		await urMom(word);
-		let buffer = canvas.toBuffer('image/jpeg', { quality: 1 });
-		fs.writeFileSync(uri, buffer);
-		console.log('createIMG: image created');
+    await urMom(word);
+    let buffer = canvas.toBuffer('image/jpeg', { quality: 1 });
+    console.log('createIMG: image created');
+    return buffer;
 
-		function urMom(word) {
-			return new Promise(function(resolve) {
-				ctx.beginPath();
-				ctx.rect(0, 0, canvas.width, canvas.height);
-				ctx.fillStyle = black ? 'black' : 'white';
-				ctx.fill();
-				
-				//debugCanvas();
+    function urMom(word) {
+        return new Promise(function(resolve) {
+            ctx.beginPath();
+            ctx.rect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = black ? 'black' : 'white';
+            ctx.fill();
 
-				ctx.fillStyle = fontColour;
-				ctx.textBaseline = 'middle'; 
+            //debugCanvas();
 
-				let wordWidth = getTextWidth(word, boldFont),
-					prefixWidth = getTextWidth(prefix, regularFont),
-					padding = (canvas.width - (prefixWidth + wordWidth)) / 2;
+            ctx.fillStyle = fontColour;
+            ctx.textBaseline = 'middle'; 
 
-				if (padding > 20 * scale) {
-					ctx.textAlign = 'left';
+            let wordWidth = getTextWidth(word, boldFont),
+                prefixWidth = getTextWidth(prefix, regularFont),
+                padding = (canvas.width - (prefixWidth + wordWidth)) / 2;
 
-					ctx.font = regularFont;
-					ctx.fillText(prefix, padding - 10 * scale, canvas.height / 2);
+            if (padding > 20 * scale) {
+                ctx.textAlign = 'left';
 
-					ctx.font = boldFont;
-					ctx.fillText(word, padding + prefixWidth + 6 * scale, canvas.height / 2);
-				} else if (wordWidth < canvas.width - 40 * scale) {
-					ctx.textAlign = 'center';
+                ctx.font = regularFont;
+                ctx.fillText(prefix, padding - 10 * scale, canvas.height / 2);
 
-					ctx.font = regularFont;
-					ctx.fillText(prefix, canvas.width / 2, canvas.height / 2 - fontSize / 2 + 5 * scale);
+                ctx.font = boldFont;
+                ctx.fillText(word, padding + prefixWidth + 6 * scale, canvas.height / 2);
+            } else if (wordWidth < canvas.width - 40 * scale) {
+                ctx.textAlign = 'center';
 
-					ctx.font = boldFont;
-					ctx.fillText(word, canvas.width / 2, canvas.height / 2 + fontSize / 2 - 5 * scale);
-				} else {
-					ctx.textAlign = 'center';
+                ctx.font = regularFont;
+                ctx.fillText(prefix, canvas.width / 2, canvas.height / 2 - fontSize / 2 + 5 * scale);
 
-					ctx.font = regularFont;
-					ctx.fillText(prefix, canvas.width / 2, canvas.height / 2 - fontSize + 10 * scale);
+                ctx.font = boldFont;
+                ctx.fillText(word, canvas.width / 2, canvas.height / 2 + fontSize / 2 - 5 * scale);
+            } else {
+                ctx.textAlign = 'center';
 
-					ctx.font = boldFont;
-					let maxTextLength = getMaxTextLength(word, boldFont, canvas.width - 40 * scale);
-					if ((maxTextLength - word.length) <= 3) {
-						ctx.fillText(word.substring(0, word.length / 2) + '-', canvas.width / 2, canvas.height / 2);
-						ctx.fillText(word.substring(word.length / 2, word.length), canvas.width / 2, canvas.height / 2 + fontSize - 10 * scale);
-					} else {
-						ctx.fillText(word.substring(0, maxTextLength) + '-', canvas.width / 2, canvas.height / 2);
-						ctx.fillText(word.substring(maxTextLength, word.length), canvas.width / 2, canvas.height / 2 + fontSize - 10 * scale);
-					}
-				}
-				resolve();
-                return;
-			});
-		}
+                ctx.font = regularFont;
+                ctx.fillText(prefix, canvas.width / 2, canvas.height / 2 - fontSize + 10 * scale);
 
-		function getMaxTextLength(txt, font, maxWidth) {
-			let lengths = [];
-			for (let i = 0; i <= txt.length; i++) {
-				let str = txt.substring(0, i);
-				let width = getTextWidth(str, font);
-				lengths.push(str.length);
-				if (width > maxWidth) {
-					return (lengths[i - 1] != undefined) ? lengths[i - 1] : lengths[i];
-				}
-			}
-		}
+                ctx.font = boldFont;
+                let maxTextLength = getMaxTextLength(word, boldFont, canvas.width - 40 * scale);
+                if ((maxTextLength - word.length) <= 3) {
+                    ctx.fillText(word.substring(0, word.length / 2) + '-', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText(word.substring(word.length / 2, word.length), canvas.width / 2, canvas.height / 2 + fontSize - 10 * scale);
+                } else {
+                    ctx.fillText(word.substring(0, maxTextLength) + '-', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText(word.substring(maxTextLength, word.length), canvas.width / 2, canvas.height / 2 + fontSize - 10 * scale);
+                }
+            }
+            resolve();
+            return;
+        });
+    }
 
-		function getTextWidth(txt, font) {
-			let canvas = createCanvas(1920, 1920),
-				ctx = canvas.getContext('2d');
-			ctx.font = font;
-			return ctx.measureText(txt).width;
-		}
+    function getMaxTextLength(txt, font, maxWidth) {
+        let lengths = [];
+        for (let i = 0; i <= txt.length; i++) {
+            let str = txt.substring(0, i);
+            let width = getTextWidth(str, font);
+            lengths.push(str.length);
+            if (width > maxWidth) {
+                return (lengths[i - 1] != undefined) ? lengths[i - 1] : lengths[i];
+            }
+        }
+    }
 
-		function clearCanvas() {
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-		}
+    function getTextWidth(txt, font) {
+        let canvas = createCanvas(1920, 1920),
+            ctx = canvas.getContext('2d');
+        ctx.font = font;
+        return ctx.measureText(txt).width;
+    }
 
-		function debugCanvas() {
-			ctx.lineWidth = 6;
-			ctx.strokeStyle='#000000';
-			ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
-			ctx.lineWidth = 3;
-			ctx.strokeStyle = 'grey';
-			ctx.moveTo(canvas.width / 2, 0);
-			ctx.lineTo(canvas.width / 2, canvas.height);
-			ctx.stroke();
-			ctx.moveTo(0, canvas.height / 2);
-			ctx.lineTo(canvas.width, canvas.height / 2);
-			ctx.stroke();
+    function debugCanvas() {
+        ctx.lineWidth = 6;
+        ctx.strokeStyle='#000000';
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
-			let wordWidth = getTextWidth(words[index], boldFont),
-				prefixWidth = getTextWidth(prefix, regularFont);
-			ctx.moveTo((canvas.width - (prefixWidth + wordWidth)) / 2, 0);
-			ctx.lineTo((canvas.width - (prefixWidth + wordWidth)) / 2, canvas.height);
-			ctx.stroke();
-			ctx.moveTo(canvas.width - (canvas.width - (prefixWidth + wordWidth)) / 2, 0);
-			ctx.lineTo(canvas.width - (canvas.width - (prefixWidth + wordWidth)) / 2, canvas.height);
-			ctx.stroke();
-		}
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'grey';
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+
+        let wordWidth = getTextWidth(words[index], boldFont),
+            prefixWidth = getTextWidth(prefix, regularFont);
+        ctx.moveTo((canvas.width - (prefixWidth + wordWidth)) / 2, 0);
+        ctx.lineTo((canvas.width - (prefixWidth + wordWidth)) / 2, canvas.height);
+        ctx.stroke();
+        ctx.moveTo(canvas.width - (canvas.width - (prefixWidth + wordWidth)) / 2, 0);
+        ctx.lineTo(canvas.width - (canvas.width - (prefixWidth + wordWidth)) / 2, canvas.height);
+        ctx.stroke();
+    }
 }
     
 function randomInt(min, max) {
