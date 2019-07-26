@@ -1,5 +1,5 @@
 @echo off
-title ur mom bot (beta)
+title ur mom bot
 if "%1"=="-f" (
 	node "%~dp0main.js" -f
 ) else (

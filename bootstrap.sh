@@ -1,7 +1,7 @@
 #!/bin/bash
 args=("$@")
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-title="ur mom bot (beta)"
+title="ur mom bot"
 
 echo -e '\033]2;'$title'\007'
 
