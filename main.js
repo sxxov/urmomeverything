@@ -193,8 +193,8 @@ async function getDefinition(word, minWordLength) {
         let xhttp = new XMLHttpRequest();
 		xhttp.open('GET', `https://od-api.oxforddictionaries.com/api/v2/entries/en-gb/${word}?fields=definitions&strictMatch=false`, true);
         xhttp.setRequestHeader('Accept', 'application/json');
-        xhttp.setRequestHeader('app_id', '1fc12ae2');
-        xhttp.setRequestHeader('app_key', 'b6052ff26aa20f8b9e6d1a1ff06ebeb7');
+        xhttp.setRequestHeader('app_id', dictID);
+        xhttp.setRequestHeader('app_key', dictAPI);
 		xhttp.onload = async () => {
 				if (xhttp.status == 200) {
 					let data = JSON.parse(xhttp.response);
@@ -333,7 +333,8 @@ function randomHashtags() {
     let maxHashtags = 20;
     let rnd = Math.floor(Math.random() * maxHashtags) + 3;
     let hashtagArray = shuffleArray(hashtags);
-	return hashtagArray.slice(0, rnd);
+        hashtagArray = hashtagArray.slice(0, rnd);
+	return hashtagArray.join(' ');
 }
     
 function shuffleArray(array) {
