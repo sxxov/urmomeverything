@@ -387,7 +387,7 @@ ${url}`);
 
 	async function incrementIndex() {
 		return new Promise((resolve) => {
-			fs.writeFile(`${__dirname}//stuff//.index`, { 'index': index + 1 }, (err) => {
+			fs.writeFile(`${__dirname}//stuff//.index`, JSON.stringify({ 'index': index + 1 }), (err) => {
 				if (!err) {
 					resolve();
 					return;
