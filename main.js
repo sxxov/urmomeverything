@@ -1,7 +1,7 @@
+console.log('loading functions');
 (async () => {
 
 	initLog('xh2');
-
 	const XMLHttpRequest = require('xhr2');
 
 	initLog('instagram-private-api');
@@ -41,12 +41,29 @@
 	const ig = new IgApiClient();
 
 	initLog('getting words');
-	const words = await getWords().then((result) => result);
+	const words = await getWords()
+				.then((result) => result)
+				.catch((e) => {
+					throw e;
+				});
 
 	initLog('getting hashtags');
-	const hashtags = await getHashtags().then((result) => result);
+	const hashtags = await getHashtags()
+					.then((result) => result)
+					.catch((e) => {
+						throw e;
+					});
 
 	initLog('miscellanious things');
+	const {
+		ErrorUploadIG,
+		ErrorDoesImageExistIG,
+		ErrorGetIndex,
+		ErrorIncrementIndex,
+		ErrorGetHashtags,
+		ErrorGetWords
+	} = require(`${__dirname}//stuff//errors.js`);
+
 	let index;
 	let args = process.argv.slice(2);
 
@@ -94,23 +111,30 @@
 			await testInternet();
 			await loginIG();
 
-			let imgUrl = await uploadIG(await createIMG(words[index], black));
+			let imgUrl = await uploadIG(await createIMG(words[index], black))
+						.catch((e) => {
+							throw e;
+						});
 
 			await doesImageExistIG(imgUrl)
-				.then(async () => {
-					try {
-						await incrementIndex();
-					} catch (e) {
-						console.log(e);
-						console.log('incrementIndex: error encountered when incrementing index');
-						console.log('incrementIndex: quitting to avoid repeated same posts');
-						process.exit(1);
-					}
-				})
+			.then(async () => {
+				await incrementIndex()
 				.catch((e) => {
-					console.log(e);
-					console.log('incrementIndex: not incrementing index');
+					console.log('incrementIndex: quitting to avoid repeated same posts');
+					throw e;
 				});
+			})
+			.catch((e) => {
+				if (e !== new (new ErrorDoesImageExistIG()).EmptyURL()) {
+					doesImageExistIG(imgUrl)
+					.then(() => {
+						return;
+					})
+					.catch(() => {});
+				}
+				console.log('incrementIndex: not incrementing index');
+				throw e;
+			});
 
 			await fs.writeFile(`${__dirname}//stuff//.lastrun`, JSON.stringify({ 'lastRun': getCurrentHour() }), (err) => {
 				return err ? console.log(err) : false;
@@ -135,28 +159,27 @@
 		}
 
 		let randomMillis = randomInt(0, 600000);
-		let currentHour = getCurrentHour();
-		let hour = getNextHour();
+		let hourToRun = getNextHour();
 
 		console.clear();
-		if (lastRun !== currentHour && getCurrentMin() <= 10) {
+		if (lastRun !== getCurrentHour() && getCurrentMin() <= 10) {
 			await init();
 		}
-		console.log(`zzz ${to12Hr( `${hour}:${ millisToMinsAndSecs( randomMillis )}` )}`);
+		console.log(`zzz ${to12Hr( `${hourToRun}:${ millisToMinsAndSecs( randomMillis )}` )}`);
 		await schedule.scheduleJob('0 0 */1 * * *', async () => {
 			await sleep(randomMillis);
-			if (getCurrentHour() === hour && getCurrentMin() === millisToMins(randomMillis)) {
+			if (getCurrentHour() === hourToRun && getCurrentMin() === millisToMins(randomMillis)) {
 				await init();
 			} else {
 				console.log('loop: time makes no sense');
 				console.log(`loop:
-hours: ${getCurrentHour()} should be: ${hour}
-minutes: ${getCurrentMin()} should be: ${millisToMins( randomMillis )} (of ${randomMillis})
+hours: ${getCurrentHour()} should be: ${hourToRun}
+minutes: ${getCurrentMin()} should be: ${millisToMins( randomMillis )} (of ${randomMillis}ms)
 `);
 			}
 			randomMillis = randomInt(0, 600000);
-			hour = getNextHour();
-			console.log(`zzz ${to12Hr( `${hour }:${ millisToMinsAndSecs( randomMillis )}` )}`);
+			hourToRun = getNextHour();
+			console.log(`zzz ${to12Hr( `${hourToRun}:${ millisToMinsAndSecs( randomMillis )}` )}`);
 		});
 	}
 
@@ -181,7 +204,7 @@ minutes: ${getCurrentMin()} should be: ${millisToMins( randomMillis )} (of ${ran
 
 	function getNextHour() {
 		let date = new Date();
-		let nextHour = `0${date.getHours() + 1}`;
+		let nextHour = (date.getHours() + 1) >= 24 ? '00' : `0${date.getHours() + 1}`;
 
 		return nextHour.slice(-2);
 	}
@@ -259,7 +282,13 @@ minutes: ${getCurrentMin()} should be: ${millisToMins( randomMillis )} (of ${ran
 				let otherData;
 
 				if (minWordLength === undefined || word.length > minWordLength) {
-					otherData = await getDefinition(word.substring(0, word.length - 1), minWordLength ? minWordLength : word.length - 3).then((result) => result);
+					if (word.slice(-1) === 's') {
+						otherData = await getDefinition(word.substring(0, word.length - 1), minWordLength ? minWordLength : word.length - 1).then((result) => result);
+					} else if (word.slice(-2) === 'ed') {
+						otherData = await getDefinition(word.substring(0, word.length - 1), minWordLength ? minWordLength : word.length - 2).then((result) => result);
+					} else if (word.slice(-3) === 'ies') {
+						otherData = await getDefinition(word.substring(0, word.length - 1), minWordLength ? minWordLength : word.length - 3).then((result) => result);
+					}
 					if (otherData !== 'idk') {
 						resolve(otherData);
 					}
@@ -300,12 +329,11 @@ what it means: ${definition}
 
 			console.log(`uploadIG: upload function complete: ${url}`);
 			if (result.status !== 'ok') {
-				throw new Error('uploadIG: upload status != ok');
+				throw new (new ErrorUploadIG()).NotOK();
 			}
 			return url;
 		} catch (e) {
-			console.log('uploadIG: error');
-			console.log(e);
+			throw new (new ErrorUploadIG()).Unknown(e);
 		}
 	}
 
@@ -342,7 +370,7 @@ what it means: ${definition}
 		return new Promise((resolve) => {
 			console.log('doesImageExistIG: verifying if the image uploaded correctly');
 			if (url === null || url === undefined || url === 'https://www.instagram.com/p//') {
-				throw new Error('doesImageExistIG: empty url');
+				throw new (new ErrorDoesImageExistIG()).EmptyURL();
 			}
 			let xhttp = new XMLHttpRequest();
 
@@ -355,12 +383,12 @@ ${url}`);
 					resolve();
 					return;
 				}
-				throw new Error('doesImageExistIG: something went wrong, image doesn\'t exist');
+				throw new (new ErrorDoesImageExistIG()).NotFound();
 				// die();
 
 			};
-			xhttp.ontimeout = (e) => {
-				throw new Error(`doesImageExistIG: ${e}`);
+			xhttp.ontimeout = () => {
+				throw new (new ErrorDoesImageExistIG()).Timeout();
 			};
 			xhttp.send(null);
 		});
@@ -376,7 +404,7 @@ ${url}`);
 
 				fs.writeFile(`${__dirname}//stuff//.index`, index, (errWrite) => {
 					if (errWrite) {
-						throw errWrite;
+						throw new (new ErrorGetIndex()).WriteError();
 					}
 				});
 				resolve(newIndex);
@@ -392,7 +420,7 @@ ${url}`);
 					resolve();
 					return;
 				}
-				throw err;
+				throw new (new ErrorIncrementIndex()).WriteError();
 			});
 		});
 	}
@@ -422,7 +450,7 @@ ${url}`);
 					resolve(data.split('\r\n'));
 					return;
 				}
-				throw err;
+				throw new (new ErrorGetHashtags()).ReadError();
 
 			});
 		});
@@ -435,7 +463,7 @@ ${url}`);
 					resolve(data.split('\r\n'));
 					return;
 				}
-				throw err;
+				throw new (new ErrorGetWords()).ReadError();
 
 			});
 		});
