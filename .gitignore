@@ -1,2 +1,5 @@
-node_modules/*
-v8.txt
+node_modules
+**/credentials.json
+**/state.json
+**/.log
+painted.jpg

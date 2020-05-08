@@ -1,0 +1,1 @@
+{"version":3,"file":"time.error.js","sourceRoot":"","sources":["../../../src/resources/errors/time.error.ts"],"names":[],"mappings":";;AAAA,8CAAoC;AACpC,uDAAgD;AAEhD,MAAa,SAAU,SAAQ,6BAAW;IACzC,YAAY,OAGX;QACA,MAAM,EACL,WAAW,EACX,YAAY,GACZ,GAAG,OAAO,CAAC;QAEZ,KAAK,CAAC;YACL,OAAO,EAAE,GAAG,oBAAO,CAAC,MAAM,CAAC,IAAI,KAAK,WAAW,QAAQ,YAAY,EAAE;SACrE,CAAC,CAAC;IACJ,CAAC;CACD;AAdD,8BAcC"}
