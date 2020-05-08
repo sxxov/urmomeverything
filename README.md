@@ -33,14 +33,14 @@ Instagram credentials & Oxford Dictionary API keys are required.
 // example of ./stuff/credentials.json:
 
 {
-    ig: {
-		id: 'email',
-		key: 'password',
+	"ig": {
+		"id": "email",
+		"key": "password"
 	},
-	oxford: {
-		id: 'dictId (https://developer.oxforddictionaries.com)',
-		key: 'apiKey (https://developer.oxforddictionaries.com)',
-	},
+	"oxford": {
+		"id": "dictId (https://developer.oxforddictionaries.com)",
+		"key": "apiKey (https://developer.oxforddictionaries.com)"
+	}
 }
 ```
 
